@@ -3,6 +3,10 @@
 #include "ia.h"
 #include <stdio.h>
 
+/*
+Coucou, ceci est un test
+*/
+
 int main() {
     EtatPartie partie;
     int mode_jeu = 0;
