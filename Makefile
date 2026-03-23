@@ -1,39 +1,36 @@
-# Nom de l'exécutable final
-TARGET = echecs
+# Nom de la sortie (doit finir par .js pour Emscripten)
+TARGET = echecs.js
 
 # Compilateur
-CC = gcc
+CC = emcc
 
 # Options de compilation
-# -Wall : affiche tous les avertissements
-# -Wextra : affiche encore plus d'avertissements pour un code propre
-# -g : ajoute les infos de débogage
-CFLAGS = -Wall -Wextra -g
+# -O2 : Optimisation pour la vitesse
+# -s WASM=1 : Force la génération de WebAssembly
+# -s MODULARIZE=1 : Permet d'utiliser .then() dans le JS
+# -s EXPORT_NAME="'Echecs'" : Nom de la fonction d'initialisation
+CFLAGS = -O2 -s WASM=1 -s MODULARIZE=1 -s EXPORT_NAME="'Echecs'"
 
-# Liste des fichiers source (.c)
-SRCS = main.c jeu.c plateau.c pieces.c ia.c
+# Fonctions à exporter (AJOUTE ICI TOUTES TES FONCTIONS C UTILISÉES EN JS)
+# Note : On ajoute un '_' devant le nom des fonctions C
+EXPORTS = -s EXPORTED_RUNTIME_METHODS='["ccall", "cwrap"]' \
+          -s EXPORTED_FUNCTIONS='["_initialiserPlateau", "_initialiser_partie", "_jouer_coup_web", "_renvoyer_FEN", "_main"]'
 
-# Génère la liste des fichiers objets (.o) à partir des sources
+SRCS = jeu.c plateau.c pieces.c ia.c
 OBJS = $(SRCS:.c=.o)
 
-# Règle par défaut : compile le projet
 all: $(TARGET)
 
-# Règle pour lier les fichiers objets et créer l'exécutable
+# L'édition de liens doit inclure les EXPORTS
 $(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS) -lm
+	$(CC) $(CFLAGS) $(EXPORTS) -o $(TARGET) $(OBJS)
 
-# Règle pour compiler les fichiers .c en .o
-# %.o: %.c signifie "pour chaque fichier .o, regarde le .c correspondant"
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Règle pour nettoyer les fichiers temporaires
 clean:
-	del /f $(OBJS) $(TARGET).exe
+	del /f *.o echecs.js echecs.wasm
 
-# Règle pour tout recommencer à zéro
 re: clean all
 
-# Indique que ces règles ne sont pas des fichiers
 .PHONY: all clean re

@@ -84,26 +84,24 @@ int executer_tour(EtatPartie *partie) {
  * n'affiche jamais de message d'erreur, c'est à la partie JS de gérer ça.
  */
 EMSCRIPTEN_KEEPALIVE
-int tour_web(EtatPartie *partie, int x1, int y1, int x2, int y2) {
-    if (!est_mouvement_valide(x1, y1, x2, y2, partie->tour_joueur)) return 0; // Coup invalide
+int jouer_coup_web(int x1, int y1, int x2, int y2, char p) {
+    // 1. Appliquer le coup de l'humain
+    // Note : On utilise ta logique existante tour_web
+    // Assure-toi que 'partie_globale' est bien ton pointeur d'état
+    int valide = tour_web(&partie_globale, x1, y1, x2, y2);
     
-    Case piece_depart = plateau[x1][y1];
-    Case piece_dest_svg = plateau[x2][y2];
+    if (!valide) return 0; // Le JS saura que le coup était illégal
 
-    // Déplacement temporaire
-    plateau[x2][y2] = piece_depart;
-    plateau[x1][y1].type = VIDE;
-    plateau[x1][y1].couleur = AUCUNE;
-
-    if (est_echec(partie->tour_joueur)) {
-        // Annulation si le mouvement met le joueur en échec
-        plateau[x1][y1] = piece_depart;
-        plateau[x2][y2] = piece_dest_svg;
-        return 0; // Coup invalide car met en échec
-    }
-    partie->tour_joueur = (partie->tour_joueur == BLANC) ? NOIR : BLANC;
-    // Vérification si le coup a mis l'adversaire en échec
-    partie->en_echec = est_echec(partie->tour_joueur);
+    // 2. Si le coup est valide, c'est au tour de l'IA
+    // On appelle ta fonction de recherche (ex: minimax)
+    Coup meilleur_coup = calculer_meilleur_coup(&partie_globale);
+    
+    // 3. Appliquer le coup de l'IA sur le plateau
+    appliquer_coup(&partie_globale, meilleur_coup);
+    
+    // 4. On change le tour pour revenir à l'humain
+    partie_globale.tour_joueur = BLANC; 
+    
     return 1;
 }
 
@@ -137,7 +135,7 @@ int est_echec(Couleur c) {
     return 0;
 }
 
-est_mat(partie) {
+int est_mat(EtatPartie *partie) {
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
             if (plateau[i][j].couleur == partie->tour_joueur) {

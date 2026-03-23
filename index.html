@@ -12,16 +12,22 @@
     <div id="myBoard" style="width: 400px"></div>
     <p>Statut : <span id="status">Chargement du moteur...</span></p>
 
-    <script src="moteur.js"></script>
+    <script src="echecs.js"></script>
     <script>
         var board = null;
         var engine = null;
 
-        // Initialisation du module Wasm
-        createModule().then(Module => {
-            engine = Module;
+        // Table de conversion pour envoyer le bon caractère au C
+        const pieceMap = {
+            'wP': 'P', 'wN': 'N', 'wB': 'B', 'wR': 'R', 'wQ': 'Q', 'wK': 'K',
+            'bP': 'p', 'bN': 'n', 'bB': 'b', 'bR': 'r', 'bQ': 'q', 'bK': 'k'
+        };
+
+        // Initialisation correcte (Emscripten génère souvent une fonction nommée d'après le fichier ou utilise Module)
+        Echecs().then(instance => {
+            engine = instance;
             engine._initialiserPlateau();
-            engine._initialiser_partie(0); // On passe un pointeur nul ou factice si besoin
+            engine._initialiser_partie(0);
             
             document.getElementById('status').innerText = "Prêt à jouer !";
             
@@ -34,27 +40,30 @@
             board = Chessboard('myBoard', config);
         });
 
-    function handleMove(source, target, piece, newPos, oldPos, orientation) {
-        // 1. Conversion des coordonnées pour le C
-        let y1 = source.charCodeAt(0) - 97;
-        let x1 = 8 - parseInt(source[1]);
-        let y2 = target.charCodeAt(0) - 97;
-        let x2 = 8 - parseInt(target[1]);
+        function handleMove(source, target, piece, newPos, oldPos, orientation) {
+            let y1 = source.charCodeAt(0) - 97;
+            let x1 = 8 - parseInt(source[1]);
+            let y2 = target.charCodeAt(0) - 97;
+            let x2 = 8 - parseInt(target[1]);
 
-        // 2. Exécuter le coup humain et le calcul de l'IA en C
-        // On suppose que ton EtatPartie est géré globalement ou via un pointeur 0
-        engine._jouer_coup_web(x1, y1, x2, y2, 0); 
+            // On récupère le caractère de la pièce ('P', 'n', etc.)
+            let pChar = pieceMap[piece].charCodeAt(0);
 
-        // 3. Récupérer la nouvelle position FEN générée par le C
-        // Utilise ccall pour récupérer une chaîne de caractères proprement
-        let fen = engine.ccall('renvoyer_FEN', 'string');
+            // Appeler le C : renvoie 1 si valide, 0 sinon
+            let coupValide = engine._jouer_coup_web(x1, y1, x2, y2, pChar);
 
-        // 4. Mettre à jour le plateau Chessboard.js
-        // On utilise un setTimeout pour laisser le temps à l'animation du glisser-déposer de finir
-        setTimeout(function() {
-            board.position(fen);
-        }, 250);
-    }
+            if (coupValide === 0) {
+                return 'snapback'; // Annule le mouvement sur l'interface
+            }
+
+            // Le coup est valide, l'IA a aussi joué côté C.
+            // On récupère le FEN mis à jour (qui contient le coup de l'IA)
+            let fen = engine.ccall('renvoyer_FEN', 'string');
+
+            setTimeout(function() {
+                board.position(fen); // Affiche la réponse de l'IA
+            }, 250);
+        }
     </script>
 </body>
 </html>
