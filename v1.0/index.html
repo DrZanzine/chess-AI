@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Mon IA d'Échecs Wasm</title>
+    <link rel="stylesheet" href="./chessboardjs/css/chessboard-0.3.0.min.css"/>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="./chessboardjs/js/chessboard-0.3.0.min.js"></script>
+</head>
+<body>
+    <h2>Échecs IA (C + WebAssembly)</h2>
+    <div id="myBoard" style="width: 400px"></div>
+    <p>Statut : <span id="status">Chargement du moteur...</span></p>
+
+    <script src="moteur.js"></script>
+    <script>
+        var board = null;
+        var engine = null;
+
+        // Initialisation du module Wasm
+        createModule().then(Module => {
+            engine = Module;
+            engine._initialiserPlateau();
+            engine._initialiser_partie(0); // On passe un pointeur nul ou factice si besoin
+            
+            document.getElementById('status').innerText = "Prêt à jouer !";
+            
+            var config = {
+                draggable: true,
+                position: 'start',
+                onDrop: handleMove,
+                pieceTheme: './chessboardjs/img/{piece}.png',
+            };
+            board = Chessboard('myBoard', config);
+        });
+
+    function handleMove(source, target, piece, newPos, oldPos, orientation) {
+        // 1. Conversion des coordonnées pour le C
+        let y1 = source.charCodeAt(0) - 97;
+        let x1 = 8 - parseInt(source[1]);
+        let y2 = target.charCodeAt(0) - 97;
+        let x2 = 8 - parseInt(target[1]);
+
+        // 2. Exécuter le coup humain et le calcul de l'IA en C
+        // On suppose que ton EtatPartie est géré globalement ou via un pointeur 0
+        engine._jouer_coup_web(x1, y1, x2, y2, 0); 
+
+        // 3. Récupérer la nouvelle position FEN générée par le C
+        // Utilise ccall pour récupérer une chaîne de caractères proprement
+        let fen = engine.ccall('renvoyer_FEN', 'string');
+
+        // 4. Mettre à jour le plateau Chessboard.js
+        // On utilise un setTimeout pour laisser le temps à l'animation du glisser-déposer de finir
+        setTimeout(function() {
+            board.position(fen);
+        }, 250);
+    }
+    </script>
+</body>
+</html>

@@ -62,11 +62,17 @@ int est_mouvement_dame_valide(int x1, int y1, int x2, int y2) {
 }
 
 int est_mouvement_roi_valide(int x1, int y1, int x2, int y2) {
-    return abs(x2 - x1) <= 1 && abs(y2 - y1) <= 1;
+    return (abs(x2 - x1) <= 1 && abs(y2 - y1) <= 1); // Déplacement d'une case max
 }
 
 // LA FONCTION MAÎTRESSE
 int est_mouvement_valide(int x1, int y1, int x2, int y2, Couleur joueur_actuel) {
+    /*
+    est_mouvement_valide vérifie si le déplacement de (x1,y1) à (x2,y2) est légal pour le joueur actuel.
+     - Vérifie que la pièce déplacée appartient au joueur
+     - Vérifie que la destination n'est pas occupée par une pièce alliée
+     - Délègue aux fonctions spécifiques selon le type de pièce pour vérifier les règles de déplacement
+    */
     Case p = plateau[x1][y1];
 
     // 1. Vérifier si on déplace bien une pièce à nous

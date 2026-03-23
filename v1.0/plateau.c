@@ -68,3 +68,20 @@ void jouer_coup_IA(int x1, int y1, int x2, int y2) {
     plateau[x1][y1].type = VIDE;
     plateau[x1][y1].couleur = AUCUNE;
 }
+
+void renvoyer_FEN() {
+    //"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR" est un exemple de FEN pour la position de départ standard.
+    char FEN[128] = "";
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            char c = '.';
+            if (plateau[i][j].type == PION) c = (plateau[i][j].couleur == BLANC) ? 'P' : 'p';
+            else if (plateau[i][j].type == TOUR) c = (plateau[i][j].couleur == BLANC) ? 'R' : 'r';
+            else if (plateau[i][j].type == CAVALIER) c = (plateau[i][j].couleur == BLANC) ? 'N' : 'n';
+            else if (plateau[i][j].type == FOU) c = (plateau[i][j].couleur == BLANC) ? 'B' : 'b';
+            else if (plateau[i][j].type == DAME) c = (plateau[i][j].couleur == BLANC) ? 'Q' : 'q';
+            else if (plateau[i][j].type == ROI) c = (plateau[i][j].couleur == BLANC) ? 'K' : 'k'; 
+            strncat(FEN, &c, 1);
+        }
+    }
+}

@@ -11,5 +11,7 @@ void initialiserPlateau();
 void afficherPlateau();
 void copier_plateau(Case source[8][8], Case destination[8][8]);
 void jouer_coup_IA(int x1, int y1, int x2, int y2);
+void renvoyer_FEN();
+
 
 #endif
