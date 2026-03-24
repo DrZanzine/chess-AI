@@ -99,10 +99,26 @@ const char* renvoyer_FEN() {
         if (vides > 0) fen[pos++] = vides + '0';
         if (i < 7) fen[pos++] = '/';
     }
+    fen[pos++] = ' ';
+    // Tour du joueur
     if (partie->tour_joueur == BLANC) fen[pos++] = 'w';
     else fen[++pos++] = 'b';
-
+    fen[pos++] = ' ';
+    // Droits de roque
     fen[pos++] = partie->can_castle;
+    fen[pos++] = ' ';
+    // En passant
+    if (strcmp(partie->en_passant, "-") == 0) {
+        fen[pos++] = '-';
+    } else {
+        fen[pos++] = partie->en_passant[0];
+        fen[pos++] = partie->en_passant[1];
+    }
+    fen[pos++] = ' ';
+    // Halmoven clock et fullmove number
+    fen[pos++] = partie->halmoven_clock + '0';
+    fen[pos++] = ' ';
+    fen[pos++] = partie->fullmove_number + '0';
     fen[pos] = '\0';
     return fen;
 }

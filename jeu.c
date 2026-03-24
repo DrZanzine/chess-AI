@@ -12,7 +12,7 @@ void initialiser_partie(EtatPartie *partie) {
     partie->est_fini = 0;
     partie->en_echec = 0;
     partie->can_castle = "KQkq"; // Toutes les possibilités de roque au début
-    partie->en_passant = -1; // Pas de prise en passant possible au début
+    partie->en_passant = "-"; // Pas de prise en passant possible au début
     partie->halmoven_clock = 0;
     partie->fullmove_number = 1;
     initialiserPlateau(); 

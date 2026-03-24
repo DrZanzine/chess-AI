@@ -13,8 +13,8 @@ CFLAGS = -O2 -s WASM=1 -s MODULARIZE=1 -s EXPORT_NAME="'Echecs'"
 
 # Fonctions à exporter (AJOUTE ICI TOUTES TES FONCTIONS C UTILISÉES EN JS)
 # Note : On ajoute un '_' devant le nom des fonctions C
-EXPORTS = -s EXPORTED_RUNTIME_METHODS='["ccall", "cwrap"]' \
-          -s EXPORTED_FUNCTIONS='["_initialiserPlateau", "_initialiser_partie", "_jouer_coup_web", "_renvoyer_FEN", "_main"]'
+EXPORTS = -s EXPORTED_FUNCTIONS='["_initialiserPlateau","_initialiser_partie","_jouer_coup_web","_renvoyer_FEN"]' \
+          -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap"]'
 
 SRCS = jeu.c plateau.c pieces.c ia.c
 OBJS = $(SRCS:.c=.o)
