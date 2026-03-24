@@ -1,36 +1,40 @@
-# Nom de la sortie (doit finir par .js pour Emscripten)
+# Nom de la sortie
 TARGET = echecs.js
 
 # Compilateur
 CC = emcc
 
 # Options de compilation
-# -O2 : Optimisation pour la vitesse
-# -s WASM=1 : Force la génération de WebAssembly
-# -s MODULARIZE=1 : Permet d'utiliser .then() dans le JS
-# -s EXPORT_NAME="'Echecs'" : Nom de la fonction d'initialisation
-CFLAGS = -O2 -s WASM=1 -s MODULARIZE=1 -s EXPORT_NAME="'Echecs'"
+CFLAGS = -O2
 
-# Fonctions à exporter (AJOUTE ICI TOUTES TES FONCTIONS C UTILISÉES EN JS)
-# Note : On ajoute un '_' devant le nom des fonctions C
-EXPORTS = -s EXPORTED_FUNCTIONS='["_initialiserPlateau","_initialiser_partie","_jouer_coup_web","_renvoyer_FEN"]' \
-          -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap"]'
+# Options de liaison (JS/WASM)
+# Suppression des crochets complexes qui font planter PowerShell
+LDFLAGS = -s WASM=1 \
+          -s MODULARIZE=1 \
+          -s EXPORT_NAME="Echecs" \
+          -s ALLOW_MEMORY_GROWTH=1 \
+          -s EXPORTED_RUNTIME_METHODS=ccall,cwrap \
+          -s EXPORTED_FUNCTIONS=_initialiserPlateau,_initialiser_partie_web,_jouer_coup_web,_renvoyer_FEN
 
+# Fichiers sources et objets
 SRCS = jeu.c plateau.c pieces.c ia.c
 OBJS = $(SRCS:.c=.o)
 
+# Règle principale
 all: $(TARGET)
 
-# L'édition de liens doit inclure les EXPORTS
+# Liaison finale
 $(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) $(EXPORTS) -o $(TARGET) $(OBJS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $(TARGET) $(OBJS)
 
+# Compilation des objets
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
+# Nettoyage
 clean:
-	del /f *.o echecs.js echecs.wasm
+	@if exist *.o del /f *.o
+	@if exist $(TARGET) del /f $(TARGET)
+	@if exist echecs.wasm del /f echecs.wasm
 
-re: clean all
-
-.PHONY: all clean re
+.PHONY: all clean

@@ -1,6 +1,7 @@
 #include "pieces.h"
 #include "plateau.h"
 #include <stdlib.h>
+#include <emscripten.h>
 
 // Fonction utilitaire pour vérifier si le chemin est libre (Tour, Fou, Dame)
 // Ne vérifie pas la case d'arrivée (qui peut être une capture)

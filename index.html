@@ -2,67 +2,122 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Mon IA d'Échecs Wasm</title>
-    <link rel="stylesheet" href="./chessboardjs/css/chessboard-0.3.0.min.css"/>
+    <title>Échecs IA - WebAssembly</title>
+    <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-    <script src="./chessboardjs/js/chessboard-0.3.0.min.js"></script>
+    <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; flex-direction: column; align-items: center; background: #f4f4f9; padding: 20px; }
+        #myBoard { box-shadow: 0 8px 25px rgba(0,0,0,0.2); border: 2px solid #333; }
+        .info { margin-top: 25px; padding: 15px; background: white; border-radius: 8px; min-width: 400px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        #status { font-weight: bold; color: #2c3e50; }
+        .game-over { color: #d32f2f !important; font-size: 1.2em; }
+        button { margin-top: 15px; padding: 10px 20px; background: #2c3e50; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background 0.3s; }
+        button:hover { background: #34495e; }
+    </style>
 </head>
 <body>
-    <h2>Échecs IA (C + WebAssembly)</h2>
-    <div id="myBoard" style="width: 400px"></div>
-    <p>Statut : <span id="status">Chargement du moteur...</span></p>
+
+    <h2>Moteur d'Échecs : C + WebAssembly</h2>
+    <div id="myBoard" style="width: 450px"></div>
+
+    <div class="info">
+        <div id="status">Chargement du moteur WASM...</div>
+        <button onclick="resetGame()">Nouvelle Partie</button>
+    </div>
 
     <script src="echecs.js"></script>
+
     <script>
         var board = null;
         var engine = null;
 
-        // Table de conversion pour envoyer le bon caractère au C
-        const pieceMap = {
-            'wP': 'P', 'wN': 'N', 'wB': 'B', 'wR': 'R', 'wQ': 'Q', 'wK': 'K',
-            'bP': 'p', 'bN': 'n', 'bB': 'b', 'bR': 'r', 'bQ': 'q', 'bK': 'k'
-        };
+        // 1. Gestion des images : adapte le nom du fichier à la casse spécifique
+        function getPieceTheme(piece) {
+            let folder = './chessboardjs/img/chesspieces/wikipedia/';
+            let color = piece[0]; // 'w' ou 'b'
+            let type = piece[1];  // 'K', 'Q', 'R', etc.
+            
+            if (color === 'b') {
+                // Noirs : nom en minuscule (ex: bn.png)
+                return folder + piece.toLowerCase() + '.png';
+            } 
+            // Blancs : nom original (ex: wK.png)
+            return folder + piece + '.png';
+        }
 
-        // Initialisation correcte (Emscripten génère souvent une fonction nommée d'après le fichier ou utilise Module)
+        // 2. Initialisation du module
         Echecs().then(instance => {
             engine = instance;
-            engine._initialiserPlateau();
-            engine._initialiser_partie(0);
-            
-            document.getElementById('status').innerText = "Prêt à jouer !";
+            engine._initialiser_partie_web();
             
             var config = {
                 draggable: true,
                 position: 'start',
-                onDrop: handleMove,
-                pieceTheme: './chessboardjs/img/{piece}.png',
+                onDrop: onDrop,
+                onSnapEnd: onSnapEnd,
+                pieceTheme: getPieceTheme
             };
-            board = Chessboard('myBoard', config);
+            
+            board = ChessBoard('myBoard', config);
+            updateStatus("À vous de jouer ! (Blancs)");
         });
 
-        function handleMove(source, target, piece, newPos, oldPos, orientation) {
+        function updateStatus(msg, isGameOver = false) {
+            let statusEl = document.getElementById('status');
+            statusEl.innerText = msg;
+            if (isGameOver) statusEl.classList.add('game-over');
+            else statusEl.classList.remove('game-over');
+        }
+
+        // 3. Logique de mouvement
+        function onDrop(source, target) {
             let y1 = source.charCodeAt(0) - 97;
             let x1 = 8 - parseInt(source[1]);
             let y2 = target.charCodeAt(0) - 97;
             let x2 = 8 - parseInt(target[1]);
 
-            // On récupère le caractère de la pièce ('P', 'n', etc.)
-            let pChar = pieceMap[piece].charCodeAt(0);
+            // 1. Validation immédiate du coup humain
+            let valide = engine._valider_coup_humain(x1, y1, x2, y2);
+            if (valide === 0) return 'snapback';
 
-            // Appeler le C : renvoie 1 si valide, 0 sinon
-            let coupValide = engine._jouer_coup_web(x1, y1, x2, y2, pChar);
+            updateStatus("L'IA réfléchit...");
 
-            if (coupValide === 0) {
-                return 'snapback'; // Annule le mouvement sur l'interface
-            }
+            // 2. On laisse le thread libre 100ms pour afficher le mouvement du pion
+            setTimeout(() => {
+                // 3. L'IA calcule (le freeze arrive ici, mais le pion est déjà déplacé)
+                let etatApresIA = engine._executer_ia();
+                
+                // 4. Mise à jour finale
+                rafraichirDepuisFEN();
+                
+                if (etatApresIA === 1) {
+                    updateStatus("ÉCHEC ET MAT ! L'IA a gagné.", true);
+                    board.draggable = false;
+                } else if (etatApresIA === 2) {
+                    updateStatus("MATCH NUL (PAT) !", true);
+                    board.draggable = false;
+                } else {
+                    updateStatus("À vous de jouer !");
+                }
+            }, 100); 
+        }
+        // 4. Utilitaires
+        function rafraichirDepuisFEN() {
+            // On passe l'adresse de la structure globale 'partie_globale'
+            let fen = engine.ccall('renvoyer_FEN', 'string', ['number'], [engine._partie_globale]);
+            board.position(fen);
+        }
 
-            // Le coup est valide, l'IA a aussi joué côté C.
-            // On récupère le FEN mis à jour (qui contient le coup de l'IA)
-            let fen = engine.ccall('renvoyer_FEN', 'string');
+        function onSnapEnd() {
+            rafraichirDepuisFEN();
+        }
 
-            setTimeout(function() {
-                board.position(fen); // Affiche la réponse de l'IA
-            }, 250);
+        function resetGame() {
+            engine._initialiser_partie_web();
+            board.start();
+            board.draggable = true;
+            updateStatus("À vous de jouer ! (Blancs)");
         }
     </script>
 </body>
