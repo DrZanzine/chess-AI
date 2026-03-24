@@ -11,6 +11,10 @@ void initialiser_partie(EtatPartie *partie) {
     partie->tour_joueur = BLANC;
     partie->est_fini = 0;
     partie->en_echec = 0;
+    partie->can_castle = "KQkq"; // Toutes les possibilités de roque au début
+    partie->en_passant = -1; // Pas de prise en passant possible au début
+    partie->halmoven_clock = 0;
+    partie->fullmove_number = 1;
     initialiserPlateau(); 
 }
 
@@ -162,5 +166,6 @@ int est_mat(EtatPartie *partie) {
             }
         }
     }
-    return partie->en_echec; // Si on est en échec et qu'on ne peut pas en sortir, c'est un mat
+    if (est_echec(partie->tour_joueur)) return 1; // MAT
+    else return 2; // PAT}
 }

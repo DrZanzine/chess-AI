@@ -66,6 +66,7 @@ int est_mouvement_roi_valide(int x1, int y1, int x2, int y2) {
 }
 
 // LA FONCTION MAÎTRESSE
+EMSCRIPTEN_KEEPALIVE
 int est_mouvement_valide(int x1, int y1, int x2, int y2, Couleur joueur_actuel) {
     /*
     est_mouvement_valide vérifie si le déplacement de (x1,y1) à (x2,y2) est légal pour le joueur actuel.
