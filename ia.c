@@ -141,7 +141,6 @@ void jouer_meilleur_coup_IA(int profondeur) {
             }
         }
     }
-    // ... reste de la fonction (affichage et coup réel)
     if (m_x1 != -1) {
         printf("L'IA joue : %c%d -> %c%d\n", m_y1+'a', 8-m_x1, m_y2+'a', 8-m_x2);
         jouer_coup_IA(m_x1, m_y1, m_x2, m_y2);
