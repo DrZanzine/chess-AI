@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Moteur d'Échecs : C + WebAssembly</title>
+    <title>Chess-AI & Labyrinthe A*</title>
     
     <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
     
@@ -10,52 +10,63 @@
     <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
     
     <style>
-        /* --- STYLE GLOBAL --- */
+        /* --- THÈME BOIS PRÉMIUM --- */
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f0f2f5; /* Fond gris clair de ta capture */
-            color: #1c1e21;
+            font-family: 'Georgia', serif;
+            background: radial-gradient(circle at center, #4a3018 0%, #1c1005 100%);
+            color: #f4d0a0;
             display: flex;
             flex-direction: column;
             align-items: center;
             margin: 0;
             padding: 30px;
+            min-height: 100vh;
         }
 
         h1 {
-            margin-bottom: 30px;
-            color: #000;
+            margin-bottom: 5px;
+            color: #e8c396;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            font-size: 2.5em;
+            letter-spacing: 2px;
         }
 
-        /* --- CONTENEUR PRINCIPAL (Barre + Plateau) --- */
+        h3 {
+            margin-top: 0;
+            margin-bottom: 30px;
+            color: #a8845b;
+            font-style: italic;
+        }
+
+        /* --- CONTENEUR PRINCIPAL --- */
         .game-layout {
             display: flex;
-            gap: 15px;
+            gap: 25px;
             align-items: stretch;
             margin-bottom: 20px;
         }
 
-        /* --- BARRE D'ÉVALUATION --- */
+        /* --- BARRE D'ÉVALUATION (ÉCHECS) --- */
         .eval-bar-container {
-            width: 24px;
-            background-color: #404040; /* Couleur pour les Noirs */
-            border-radius: 4px;
+            width: 28px;
+            background-color: #2b1d12;
+            border-radius: 6px;
             overflow: hidden;
             position: relative;
-            box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
-            border: 2px solid #333;
+            box-shadow: inset 0 3px 8px rgba(0,0,0,0.8);
+            border: 2px solid #6b4c30;
+            transition: opacity 0.3s;
         }
 
         .eval-bar-fill {
             width: 100%;
-            background-color: #ffffff; /* Couleur pour les Blancs */
+            background-color: #e4e2dd;
             position: absolute;
             bottom: 0;
-            height: 50%; /* 50% = égalité parfaite */
+            height: 50%;
             transition: height 0.6s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        /* Ligne du milieu (0.0) */
         .eval-bar-container::after {
             content: '';
             position: absolute;
@@ -63,89 +74,152 @@
             left: 0;
             right: 0;
             height: 2px;
-            background-color: rgba(255, 0, 0, 0.5);
+            background-color: rgba(216, 50, 50, 0.8);
             z-index: 10;
         }
 
-        /* --- L'ÉCHIQUIER --- */
+        /* --- LES DEUX PLATEAUX --- */
         #myBoard {
-            width: 450px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
-            border: 4px solid #333;
+            width: 480px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+            border: 8px solid #3c2415;
             border-radius: 4px;
+            background-color: #3c2415; 
         }
+
+        #mazeBoard {
+            display: none; /* Caché au début */
+            width: 480px;
+            height: 480px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+            border: 8px solid #3c2415;
+            border-radius: 4px;
+            background-color: #e4e2dd;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+        }
+
+        /* --- CELLULES DU LABYRINTHE --- */
+        .maze-cell {
+            border: 1px solid #c8c6c3;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .maze-cell:hover { background-color: #d4d2ce; }
+
+        .maze-wall { 
+            background-color: #6b4c30; 
+            background-image: url('mur.png'); 
+            background-size: cover; 
+            cursor: not-allowed;
+        }
+        .maze-wall:hover { background-color: #6b4c30; }
+
+        .maze-player { 
+            background-color: #3498db; 
+            border-radius: 50%; 
+            width: 75%; 
+            height: 75%; 
+            box-shadow: inset -2px -2px 6px rgba(0,0,0,0.4), 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .maze-enemy { 
+            background-color: #e74c3c; 
+            border-radius: 50%; 
+            width: 85%; 
+            height: 85%; 
+            box-shadow: inset -2px -2px 6px rgba(0,0,0,0.5), 0 0 10px rgba(231,76,60,0.8);
+        }
+        .maze-exit { 
+            background-color: #27ae60; 
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2.2em;
+        }
+        .maze-exit::after { content: '❌'; }
 
         /* --- PANNEAU DE CONTRÔLE --- */
         .controls-card {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            width: 450px;
+            background: linear-gradient(145deg, #2c1a0e, #1a0f08);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.7);
+            border: 1px solid #5c3c21;
+            width: 480px;
             text-align: center;
             box-sizing: border-box;
         }
 
-        #status-box {
-            font-size: 1.1em;
+        #timer-box {
+            font-size: 1.5em;
+            color: #e74c3c;
             font-weight: bold;
-            color: #2c3e50;
+            display: none;
             margin-bottom: 15px;
-            min-height: 24px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
         }
 
-        .game-over { color: #d32f2f !important; }
-
-        .settings-row {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
-        select {
-            flex: 1;
-            padding: 10px;
+        #status-box {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #f4d0a0;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 12px;
             border-radius: 6px;
-            border: 1px solid #ccc;
-            font-size: 1em;
-            background-color: #f9f9f9;
-            cursor: pointer;
+            margin-bottom: 20px;
+            border-left: 5px solid #d4a373;
+            min-height: 28px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
         }
 
+        .game-over { border-left-color: #c0392b !important; color: #e74c3c !important; }
+
+        .settings-row { display: flex; gap: 15px; margin-bottom: 15px; }
+
+        select, button {
+            flex: 1; padding: 12px; border-radius: 6px;
+            font-size: 1em; font-family: inherit; cursor: pointer;
+        }
+        select { border: 1px solid #6b4c30; background-color: #1c1005; color: #f4d0a0; }
         button {
-            flex: 1;
-            padding: 10px;
-            background-color: #2c3e50; /* Bleu ardoise foncé de ta capture */
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 1em;
-            cursor: pointer;
-            transition: background 0.2s;
+            background: linear-gradient(to bottom, #8c5b35, #5e3b21);
+            color: #f4d0a0; border: 1px solid #a67b56; font-weight: bold;
+            transition: all 0.2s; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
         }
-
-        button:hover { background-color: #1a252f; }
+        button:hover { 
+            background: linear-gradient(to bottom, #a67b56, #7a4f2e);
+            transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+        }
+        button:active { transform: translateY(0); }
     </style>
 </head>
 <body>
 
-    <h1>Moteur d'Échecs : C + WebAssembly</h1>
+    <h1>Chess-AI</h1>
+    <h3>Moteur d'Échecs & Algorithmique Avancée</h3>
 
     <div class="game-layout">
-        <div class="eval-bar-container" title="Barre d'avantage">
+        <div class="eval-bar-container" id="eval-bar">
             <div id="eval-fill" class="eval-bar-fill"></div>
         </div>
         
         <div id="myBoard"></div>
+        <div id="mazeBoard"></div>
     </div>
 
     <div class="controls-card">
-        <div id="status-box">Chargement du moteur...</div>
+        <div id="timer-box">⏱️ Temps : 10s</div>
+        <div id="status-box">Chargement du moteur WASM...</div>
         
         <div class="settings-row">
             <select id="mode-jeu" onchange="resetGame()">
-                <option value="IA">Mode : Joueur vs IA</option>
-                <option value="PVP">Mode : Joueur vs Joueur</option>
+                <option value="IA">♟️ Échecs : Joueur vs IA</option>
+                <option value="PVP">♟️ Échecs : Joueur vs Joueur</option>
+                <option value="LABY">🧱 Survie : Labyrinthe A*</option>
             </select>
             <button onclick="resetGame()">Nouvelle Partie</button>
         </div>
@@ -156,89 +230,94 @@
     <script>
         var board = null;
         var engine = null;
+        let timerInterval = null;
+        let tempsRestant = 10;
 
-        // Configuration des images de pièces
-        function getPieceTheme(piece) {
-            return './chessboardjs/img/chesspieces/wikipedia/' + piece + '.png';
-        }
+        // --- PARTIE 1 : INITIALISATION ET GESTION DES MODES ---
 
-        // Initialisation WebAssembly
         Echecs().then(instance => {
             engine = instance;
-            engine._initialiser_partie_web();
-            
             var config = {
                 draggable: true,
                 position: 'start',
                 onDrop: onDrop,
                 onSnapEnd: onSnapEnd,
-                pieceTheme: getPieceTheme
+                pieceTheme: './chessboardjs/img/chesspieces/wikipedia/{piece}.png'
             };
-            
             board = ChessBoard('myBoard', config);
-            updateStatus("À vous de jouer ! (Blancs)");
-            mettreAJourBarreEval();
+            resetGame(); 
         });
 
-        // Met à jour le texte
         function updateStatus(msg, isGameOver = false) {
             let statusEl = document.getElementById('status-box');
             statusEl.innerText = msg;
             if (isGameOver) statusEl.classList.add('game-over');
-            else statusEl.classList.remove('game-over');
+            else {
+                statusEl.classList.remove('game-over');
+                statusEl.style.color = "#f4d0a0"; // Reset couleur victoire si besoin
+            }
         }
 
-        // Logique de la barre d'évaluation
-        function mettreAJourBarreEval() {
-            // Récupère le score depuis le C
-            // Score négatif = Avantage Blanc | Score positif = Avantage Noir
-            let score = engine._evaluer_plateau_web(); 
+        function resetGame() {
+            let mode = document.getElementById('mode-jeu').value;
             
-            // On limite le score affiché à +/- 3000 (équivalent à 3 Dames) pour ne pas casser la barre
+            if (mode === "LABY") {
+                document.getElementById('myBoard').style.display = 'none';
+                document.getElementById('eval-bar').style.display = 'none';
+                document.getElementById('mazeBoard').style.display = 'grid';
+                document.getElementById('mazeBoard').style.pointerEvents = 'auto';
+                
+                engine._init_labyrinthe();
+                dessinerLabyrinthe();
+                startTimer();
+                updateStatus("Mode Survie : Fuyez vers la sortie !");
+            } else {
+                document.getElementById('mazeBoard').style.display = 'none';
+                document.getElementById('myBoard').style.display = 'block';
+                document.getElementById('eval-bar').style.display = 'block';
+                
+                engine._initialiser_partie_web();
+                rafraichirDepuisFEN();
+                if (board) board.draggable = true;
+                mettreAJourBarreEval();
+                stopTimer();
+                updateStatus("Nouvelle partie ! À vous de jouer (Blancs)");
+            }
+        }
+
+        // --- PARTIE 2 : LOGIQUE DES ÉCHECS ---
+
+        function mettreAJourBarreEval() {
+            let score = engine._evaluer_plateau_web(); 
             if (score > 3000) score = 3000;
             if (score < -3000) score = -3000;
-
-            // Calcul du pourcentage : 
-            // Si score = 0 -> 50%
-            // Si score = -3000 (Blanc gagne max) -> 100% de remplissage blanc
-            // Si score = 3000 (Noir gagne max) -> 0% de remplissage blanc
             let pourcentage = 50 - (score / 3000) * 50;
-            
             document.getElementById('eval-fill').style.height = pourcentage + '%';
         }
 
-        // Quand on lâche une pièce
         function onDrop(source, target) {
             let y1 = source.charCodeAt(0) - 97;
             let x1 = 8 - parseInt(source[1]);
             let y2 = target.charCodeAt(0) - 97;
             let x2 = 8 - parseInt(target[1]);
 
-            // Validation par le moteur C
             let valide = engine._valider_coup_humain(x1, y1, x2, y2);
-            if (valide === 0) return 'snapback'; // Coup illégal, la pièce retourne à sa place
+            if (valide === 0) return 'snapback';
         }
 
-        // Quand l'animation de la pièce est terminée
         function onSnapEnd() {
-            // 1. Rafraîchir pour afficher les coups spéciaux (Roque, En Passant, Promotion)
             rafraichirDepuisFEN();
             mettreAJourBarreEval();
 
             let mode = document.getElementById('mode-jeu').value;
-
             if (mode === "PVP") {
                 updateStatus("Coup validé. Au joueur suivant !");
                 return;
             } 
 
-            // 2. Mode IA
             updateStatus("🤖 L'IA réfléchit...");
-            
-            // 3. Petit délai pour laisser le navigateur dessiner l'écran avant de lancer les calculs lourds
             setTimeout(() => {
                 let etatApresIA = engine._executer_ia();
-                
                 rafraichirDepuisFEN();
                 mettreAJourBarreEval();
                 
@@ -254,19 +333,102 @@
             }, 250); 
         }
 
-        // Synchronise l'affichage avec la mémoire du C
         function rafraichirDepuisFEN() {
             let fen = engine.ccall('renvoyer_FEN', 'string', ['number'], [engine._partie_globale]);
             board.position(fen, true); 
         }
 
-        // Relance une partie
-        function resetGame() {
-            engine._initialiser_partie_web();
-            board.start();
-            board.draggable = true;
-            updateStatus("Nouvelle partie ! À vous de jouer (Blancs)");
-            mettreAJourBarreEval();
+        // --- PARTIE 3 : LOGIQUE DU LABYRINTHE A* ET TIMER ---
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            tempsRestant = 10;
+            let timerEl = document.getElementById('timer-box');
+            timerEl.innerText = "⏱️ Temps : " + tempsRestant + "s";
+            timerEl.style.display = 'block';
+            
+            timerInterval = setInterval(() => {
+                tempsRestant--;
+                timerEl.innerText = "⏱️ Temps : " + tempsRestant + "s";
+                
+                if (tempsRestant <= 0) {
+                    clearInterval(timerInterval);
+                    updateStatus("⌛ TEMPS ÉCOULÉ ! VOUS ÊTES MORT !", true);
+                    document.getElementById('mazeBoard').style.pointerEvents = 'none';
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+            document.getElementById('timer-box').style.display = 'none';
+        }
+
+        function dessinerLabyrinthe() {
+            const mazeDiv = document.getElementById('mazeBoard');
+            mazeDiv.innerHTML = ''; 
+
+            for (let x = 0; x < 8; x++) {
+                for (let y = 0; y < 8; y++) {
+                    let valeur = engine._lire_case_laby(x, y);
+                    let cell = document.createElement('div');
+                    cell.className = 'maze-cell';
+                    
+                    if (valeur === 1) cell.classList.add('maze-wall');
+                    else if (valeur === 2) {
+                        let player = document.createElement('div');
+                        player.className = 'maze-player';
+                        cell.appendChild(player);
+                    }
+                    else if (valeur === 3) {
+                        let enemy = document.createElement('div');
+                        enemy.className = 'maze-enemy';
+                        cell.appendChild(enemy);
+                    }
+                    else if (valeur === 4) {
+                        cell.classList.add('maze-exit'); 
+                    }
+
+                    cell.onclick = () => {
+                        let resultat = engine._deplacer_joueur_laby(x, y);
+                        
+                        if (resultat !== 0) { 
+                            dessinerLabyrinthe();
+                            
+                            if (resultat === 3) {
+                                clearInterval(timerInterval);
+                                updateStatus("🏆 SORTIE ATTEINTE ! BIEN JOUÉ !", true);
+                                document.getElementById('status-box').style.color = "#27ae60"; // Vert pour la victoire
+                                document.getElementById('mazeBoard').style.pointerEvents = 'none';
+                                return;
+                            }
+                            if (resultat === -1) {
+                                clearInterval(timerInterval);
+                                updateStatus("💀 VOUS AVEZ FONCÉ SUR LE MONSTRE !", true);
+                                document.getElementById('mazeBoard').style.pointerEvents = 'none';
+                                return;
+                            }
+                            
+                            updateStatus("💀 Le traqueur A* approche...");
+                            document.getElementById('mazeBoard').style.pointerEvents = 'none'; 
+                            
+                            setTimeout(() => {
+                                let ia_resultat = engine._jouer_ia_laby();
+                                dessinerLabyrinthe();
+                                
+                                if (ia_resultat === 1) {
+                                    clearInterval(timerInterval);
+                                    updateStatus("💀 RATTRAPÉ ! VOUS ÊTES MORT !", true);
+                                } else {
+                                    updateStatus("À vous de fuir !");
+                                    document.getElementById('mazeBoard').style.pointerEvents = 'auto'; 
+                                }
+                            }, 250); // Le monstre bouge vite !
+                        }
+                    };
+                    mazeDiv.appendChild(cell);
+                }
+            }
         }
     </script>
 </body>

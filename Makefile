@@ -17,7 +17,7 @@ LDFLAGS = -s WASM=1 \
           -s EXPORTED_FUNCTIONS=_initialiserPlateau,_initialiser_partie_web,_valider_coup_humain,_executer_ia,_renvoyer_FEN,_partie_globale
 		  
 # Fichiers sources et objets
-SRCS = jeu.c plateau.c pieces.c ia.c
+SRCS = jeu.c plateau.c pieces.c ia.c labyrinthe.c
 OBJS = $(SRCS:.c=.o)
 
 # Règle principale
