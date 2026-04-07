@@ -2,28 +2,153 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Échecs IA - WebAssembly</title>
+    <title>Moteur d'Échecs : C + WebAssembly</title>
+    
     <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+    
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+    
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; flex-direction: column; align-items: center; background: #f4f4f9; padding: 20px; }
-        #myBoard { box-shadow: 0 8px 25px rgba(0,0,0,0.2); border: 2px solid #333; }
-        .info { margin-top: 25px; padding: 15px; background: white; border-radius: 8px; min-width: 400px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        #status { font-weight: bold; color: #2c3e50; }
-        .game-over { color: #d32f2f !important; font-size: 1.2em; }
-        button { margin-top: 15px; padding: 10px 20px; background: #2c3e50; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background 0.3s; }
-        button:hover { background: #34495e; }
+        /* --- STYLE GLOBAL --- */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5; /* Fond gris clair de ta capture */
+            color: #1c1e21;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 30px;
+        }
+
+        h1 {
+            margin-bottom: 30px;
+            color: #000;
+        }
+
+        /* --- CONTENEUR PRINCIPAL (Barre + Plateau) --- */
+        .game-layout {
+            display: flex;
+            gap: 15px;
+            align-items: stretch;
+            margin-bottom: 20px;
+        }
+
+        /* --- BARRE D'ÉVALUATION --- */
+        .eval-bar-container {
+            width: 24px;
+            background-color: #404040; /* Couleur pour les Noirs */
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
+            border: 2px solid #333;
+        }
+
+        .eval-bar-fill {
+            width: 100%;
+            background-color: #ffffff; /* Couleur pour les Blancs */
+            position: absolute;
+            bottom: 0;
+            height: 50%; /* 50% = égalité parfaite */
+            transition: height 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Ligne du milieu (0.0) */
+        .eval-bar-container::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background-color: rgba(255, 0, 0, 0.5);
+            z-index: 10;
+        }
+
+        /* --- L'ÉCHIQUIER --- */
+        #myBoard {
+            width: 450px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+            border: 4px solid #333;
+            border-radius: 4px;
+        }
+
+        /* --- PANNEAU DE CONTRÔLE --- */
+        .controls-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            width: 450px;
+            text-align: center;
+            box-sizing: border-box;
+        }
+
+        #status-box {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            min-height: 24px;
+        }
+
+        .game-over { color: #d32f2f !important; }
+
+        .settings-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        select {
+            flex: 1;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-size: 1em;
+            background-color: #f9f9f9;
+            cursor: pointer;
+        }
+
+        button {
+            flex: 1;
+            padding: 10px;
+            background-color: #2c3e50; /* Bleu ardoise foncé de ta capture */
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover { background-color: #1a252f; }
     </style>
 </head>
 <body>
 
-    <h2>Moteur d'Échecs : C + WebAssembly</h2>
-    <div id="myBoard" style="width: 450px"></div>
+    <h1>Moteur d'Échecs : C + WebAssembly</h1>
 
-    <div class="info">
-        <div id="status">Chargement du moteur WASM...</div>
-        <button onclick="resetGame()">Nouvelle Partie</button>
+    <div class="game-layout">
+        <div class="eval-bar-container" title="Barre d'avantage">
+            <div id="eval-fill" class="eval-bar-fill"></div>
+        </div>
+        
+        <div id="myBoard"></div>
+    </div>
+
+    <div class="controls-card">
+        <div id="status-box">Chargement du moteur...</div>
+        
+        <div class="settings-row">
+            <select id="mode-jeu" onchange="resetGame()">
+                <option value="IA">Mode : Joueur vs IA</option>
+                <option value="PVP">Mode : Joueur vs Joueur</option>
+            </select>
+            <button onclick="resetGame()">Nouvelle Partie</button>
+        </div>
     </div>
 
     <script src="echecs.js"></script>
@@ -32,21 +157,12 @@
         var board = null;
         var engine = null;
 
-        // 1. Gestion des images : adapte le nom du fichier à la casse spécifique
+        // Configuration des images de pièces
         function getPieceTheme(piece) {
-            let folder = './chessboardjs/img/chesspieces/wikipedia/';
-            let color = piece[0]; // 'w' ou 'b'
-            let type = piece[1];  // 'K', 'Q', 'R', etc.
-            
-            if (color === 'b') {
-                // Noirs : nom en minuscule (ex: bn.png)
-                return folder + piece.toLowerCase() + '.png';
-            } 
-            // Blancs : nom original (ex: wK.png)
-            return folder + piece + '.png';
+            return './chessboardjs/img/chesspieces/wikipedia/' + piece + '.png';
         }
 
-        // 2. Initialisation du module
+        // Initialisation WebAssembly
         Echecs().then(instance => {
             engine = instance;
             engine._initialiser_partie_web();
@@ -61,35 +177,70 @@
             
             board = ChessBoard('myBoard', config);
             updateStatus("À vous de jouer ! (Blancs)");
+            mettreAJourBarreEval();
         });
 
+        // Met à jour le texte
         function updateStatus(msg, isGameOver = false) {
-            let statusEl = document.getElementById('status');
+            let statusEl = document.getElementById('status-box');
             statusEl.innerText = msg;
             if (isGameOver) statusEl.classList.add('game-over');
             else statusEl.classList.remove('game-over');
         }
 
-        // 3. Logique de mouvement
+        // Logique de la barre d'évaluation
+        function mettreAJourBarreEval() {
+            // Récupère le score depuis le C
+            // Score négatif = Avantage Blanc | Score positif = Avantage Noir
+            let score = engine._evaluer_plateau_web(); 
+            
+            // On limite le score affiché à +/- 3000 (équivalent à 3 Dames) pour ne pas casser la barre
+            if (score > 3000) score = 3000;
+            if (score < -3000) score = -3000;
+
+            // Calcul du pourcentage : 
+            // Si score = 0 -> 50%
+            // Si score = -3000 (Blanc gagne max) -> 100% de remplissage blanc
+            // Si score = 3000 (Noir gagne max) -> 0% de remplissage blanc
+            let pourcentage = 50 - (score / 3000) * 50;
+            
+            document.getElementById('eval-fill').style.height = pourcentage + '%';
+        }
+
+        // Quand on lâche une pièce
         function onDrop(source, target) {
             let y1 = source.charCodeAt(0) - 97;
             let x1 = 8 - parseInt(source[1]);
             let y2 = target.charCodeAt(0) - 97;
             let x2 = 8 - parseInt(target[1]);
 
-            // 1. Validation immédiate du coup humain
+            // Validation par le moteur C
             let valide = engine._valider_coup_humain(x1, y1, x2, y2);
-            if (valide === 0) return 'snapback';
+            if (valide === 0) return 'snapback'; // Coup illégal, la pièce retourne à sa place
+        }
 
-            updateStatus("L'IA réfléchit...");
+        // Quand l'animation de la pièce est terminée
+        function onSnapEnd() {
+            // 1. Rafraîchir pour afficher les coups spéciaux (Roque, En Passant, Promotion)
+            rafraichirDepuisFEN();
+            mettreAJourBarreEval();
 
-            // 2. On laisse le thread libre 100ms pour afficher le mouvement du pion
+            let mode = document.getElementById('mode-jeu').value;
+
+            if (mode === "PVP") {
+                updateStatus("Coup validé. Au joueur suivant !");
+                return;
+            } 
+
+            // 2. Mode IA
+            updateStatus("🤖 L'IA réfléchit...");
+            
+            // 3. Petit délai pour laisser le navigateur dessiner l'écran avant de lancer les calculs lourds
             setTimeout(() => {
-                // 3. L'IA calcule (le freeze arrive ici, mais le pion est déjà déplacé)
                 let etatApresIA = engine._executer_ia();
                 
-                // 4. Mise à jour finale
                 rafraichirDepuisFEN();
+                mettreAJourBarreEval();
                 
                 if (etatApresIA === 1) {
                     updateStatus("ÉCHEC ET MAT ! L'IA a gagné.", true);
@@ -100,24 +251,22 @@
                 } else {
                     updateStatus("À vous de jouer !");
                 }
-            }, 100); 
+            }, 250); 
         }
-        // 4. Utilitaires
+
+        // Synchronise l'affichage avec la mémoire du C
         function rafraichirDepuisFEN() {
-            // On passe l'adresse de la structure globale 'partie_globale'
             let fen = engine.ccall('renvoyer_FEN', 'string', ['number'], [engine._partie_globale]);
-            board.position(fen);
+            board.position(fen, true); 
         }
 
-        function onSnapEnd() {
-            rafraichirDepuisFEN();
-        }
-
+        // Relance une partie
         function resetGame() {
             engine._initialiser_partie_web();
             board.start();
             board.draggable = true;
-            updateStatus("À vous de jouer ! (Blancs)");
+            updateStatus("Nouvelle partie ! À vous de jouer (Blancs)");
+            mettreAJourBarreEval();
         }
     </script>
 </body>

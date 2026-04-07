@@ -33,8 +33,6 @@ $(TARGET): $(OBJS)
 
 # Nettoyage
 clean:
-	@if exist *.o del /f *.o
-	@if exist $(TARGET) del /f $(TARGET)
-	@if exist echecs.wasm del /f echecs.wasm
+	rm -f *.o $(TARGET) echecs.wasm
 
 .PHONY: all clean

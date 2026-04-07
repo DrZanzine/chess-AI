@@ -1,5 +1,6 @@
 #include "jeu.h"
 #include "ia.h"
+#include "ia.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -20,7 +21,9 @@ void initialiser_partie(EtatPartie *partie) {
     strcpy(partie->en_passant, "-");
     partie->halmoven_clock = 0;
     partie->fullmove_number = 1;
-    initialiserPlateau(); 
+    initialiserPlateau();
+    initialiser_zobrist();
+    vider_table_transposition();
 }
 
 /**
@@ -78,9 +81,7 @@ int est_mat(EtatPartie *partie) {
                             Case piece_depart = plateau[i][j];
                             Case piece_dest_svg = plateau[x2][y2];
                             
-                            plateau[x2][y2] = piece_depart;
-                            plateau[i][j].type = VIDE;
-                            plateau[i][j].couleur = AUCUNE;
+                            appliquer_mouvement_direct(i, j, x2, y2);
 
                             int toujours_echec = est_echec(partie->tour_joueur);
 
@@ -110,9 +111,8 @@ int valider_coup_humain(int x1, int y1, int x2, int y2) {
     // Simulation d'échec
     Case piece_depart = plateau[x1][y1];
     Case piece_dest_svg = plateau[x2][y2];
-    plateau[x2][y2] = piece_depart;
-    plateau[x1][y1].type = VIDE;
-    plateau[x1][y1].couleur = AUCUNE;
+
+    appliquer_mouvement_direct(x1, y1, x2, y2);
 
     if (est_echec(partie_globale.tour_joueur)) {
         plateau[x1][y1] = piece_depart;
@@ -120,7 +120,7 @@ int valider_coup_humain(int x1, int y1, int x2, int y2) {
         return 0;
     }
 
-    partie_globale.tour_joueur = NOIR; // On passe la main à l'IA
+    partie_globale.tour_joueur = (partie_globale.tour_joueur == BLANC) ? NOIR : BLANC;
     return 1; 
 }
 
@@ -157,9 +157,8 @@ int executer_tour(EtatPartie *partie) {
     // Simulation et validation finale
     Case piece_depart = plateau[x1][y1];
     Case piece_dest_svg = plateau[x2][y2];
-    plateau[x2][y2] = piece_depart;
-    plateau[x1][y1].type = VIDE;
-    plateau[x1][y1].couleur = AUCUNE;
+    
+    appliquer_mouvement_direct(x1, y1, x2, y2);
 
     if (est_echec(partie->tour_joueur)) {
         plateau[x1][y1] = piece_depart;
@@ -169,4 +168,10 @@ int executer_tour(EtatPartie *partie) {
 
     partie->tour_joueur = (partie->tour_joueur == BLANC) ? NOIR : BLANC;
     return 0; 
+}
+
+// --- PASSERELLE POUR LA BARRE D'AVANTAGE WEB ---
+EMSCRIPTEN_KEEPALIVE
+int evaluer_plateau_web() {
+    return evaluer_plateau(); 
 }

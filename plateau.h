@@ -26,4 +26,14 @@ void appliquer_mouvement_direct(int x1, int y1, int x2, int y2);
 const char* renvoyer_FEN(EtatPartie *partie);
 void jouer_coup_IA(int x1, int y1, int x2, int y2);
 
+// Coordonnées de la case cible pour une Prise en Passant (-1 si aucune)
+extern int ep_x;
+extern int ep_y;
+
+// Droits de roque (1 = Droit valide, 0 = Droit perdu)
+extern int roque_K; // Blanc, Petit Roque (Côté Roi)
+extern int roque_Q; // Blanc, Grand Roque (Côté Dame)
+extern int roque_k; // Noir, Petit Roque
+extern int roque_q; // Noir, Grand Roque
+
 #endif

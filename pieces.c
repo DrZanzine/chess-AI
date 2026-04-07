@@ -3,6 +3,24 @@
 #include <stdlib.h>
 #include <emscripten.h>
 
+
+// Fonction "Radar" : Vérifie si une case (x, y) est attaquée par une couleur
+int est_case_attaquee(int x, int y, Couleur attaquant) {
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            if (plateau[i][j].couleur == attaquant) {
+                // Pour le Roi adverse, on check la distance (évite une boucle infinie de roque)
+                if (plateau[i][j].type == ROI) {
+                    if (abs(x - i) <= 1 && abs(y - j) <= 1) return 1;
+                } else if (est_mouvement_valide(i, j, x, y, attaquant)) {
+                    return 1;
+                }
+            }
+        }
+    }
+    return 0;
+}
+
 // Fonction utilitaire pour vérifier si le chemin est libre (Tour, Fou, Dame)
 // Ne vérifie pas la case d'arrivée (qui peut être une capture)
 int chemin_libre(int x1, int y1, int x2, int y2) {
@@ -33,10 +51,16 @@ int est_mouvement_pion_valide(int x1, int y1, int x2, int y2, Couleur couleur) {
         && plateau[x1 + direction][y2].type == VIDE && plateau[x2][y2].type == VIDE) {
         return 1;
     }
-    // Capture en diagonale
-    if (abs(y2 - y1) == 1 && x2 == x1 + direction 
-        && plateau[x2][y2].type != VIDE && plateau[x2][y2].couleur != couleur) {
-        return 1;
+    // Captures (Diagonales)
+    if (abs(y2 - y1) == 1 && x2 == x1 + direction) {
+        // Prise classique
+        if (plateau[x2][y2].type != VIDE && plateau[x2][y2].couleur != couleur) {
+            return 1;
+        }
+        // NOUVEAU : Prise en passant
+        if (x2 == ep_x && y2 == ep_y) {
+            return 1;
+        }
     }
     return 0;
 }
@@ -63,7 +87,41 @@ int est_mouvement_dame_valide(int x1, int y1, int x2, int y2) {
 }
 
 int est_mouvement_roi_valide(int x1, int y1, int x2, int y2) {
-    return (abs(x2 - x1) <= 1 && abs(y2 - y1) <= 1); // Déplacement d'une case max
+    // 1. Déplacement normal (1 case)
+    if (abs(x2 - x1) <= 1 && abs(y2 - y1) <= 1) return 1; 
+
+    // 2. LE ROQUE (Déplacement de 2 cases horizontalement)
+    Couleur c = plateau[x1][y1].couleur;
+    Couleur adv = (c == BLANC) ? NOIR : BLANC;
+
+    if (x1 == x2 && abs(y2 - y1) == 2) {
+        // Le roi doit être sur sa ligne de départ
+        if ((c == BLANC && x1 != 7) || (c == NOIR && x1 != 0)) return 0;
+        
+        // Règle 1 : Le Roi ne doit pas être en échec actuellement
+        if (est_case_attaquee(x1, y1, adv)) return 0;
+
+        // Petit Roque (vers la colonne 'g' / y2 == 6)
+        if (y2 == 6) {
+            if ((c == BLANC && !roque_K) || (c == NOIR && !roque_k)) return 0;
+            // Vérifier que les cases f1/g1 (ou f8/g8) sont vides
+            if (plateau[x1][5].type != VIDE || plateau[x1][6].type != VIDE) return 0;
+            // Règle 2 : Le Roi ne doit pas traverser ni arriver sur une case attaquée
+            if (est_case_attaquee(x1, 5, adv) || est_case_attaquee(x1, 6, adv)) return 0;
+            return 1;
+        }
+        
+        // Grand Roque (vers la colonne 'c' / y2 == 2)
+        if (y2 == 2) {
+            if ((c == BLANC && !roque_Q) || (c == NOIR && !roque_q)) return 0;
+            // Vérifier que les cases b1/c1/d1 sont vides
+            if (plateau[x1][1].type != VIDE || plateau[x1][2].type != VIDE || plateau[x1][3].type != VIDE) return 0;
+            // Règle 2 : Le Roi ne doit pas traverser ni arriver sur une case attaquée
+            if (est_case_attaquee(x1, 3, adv) || est_case_attaquee(x1, 2, adv)) return 0;
+            return 1;
+        }
+    }
+    return 0;
 }
 
 // LA FONCTION MAÎTRESSE

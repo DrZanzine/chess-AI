@@ -8,6 +8,10 @@
 // Définition physique du plateau global (8x8 cases)
 Case plateau[8][8]; 
 
+int ep_x = -1;
+int ep_y = -1;
+int roque_K = 1, roque_Q = 1, roque_k = 1, roque_q = 1;
+
 /* ==========================================================================
    1. FONCTIONS DE BASE (Logique Interne & Console)
    ========================================================================== */
@@ -79,9 +83,54 @@ void copier_plateau(Case source[8][8], Case destination[8][8]) {
  * Applique un mouvement brut sur le plateau sans aucune vérification.
  */
 void appliquer_mouvement_direct(int x1, int y1, int x2, int y2) {
+    int est_pion = (plateau[x1][y1].type == PION);
+    int est_roi = (plateau[x1][y1].type == ROI);
+    int est_ep = (est_pion && y1 != y2 && plateau[x2][y2].type == VIDE);
+    int est_roque = (est_roi && abs(y2 - y1) == 2);
+
+    // 1. Déplacement classique
     plateau[x2][y2] = plateau[x1][y1];
     plateau[x1][y1].type = VIDE;
     plateau[x1][y1].couleur = AUCUNE;
+
+    // 2. Destruction du pion adverse (Prise en Passant)
+    if (est_ep) {
+        plateau[x1][y2].type = VIDE;
+        plateau[x1][y2].couleur = AUCUNE;
+    }
+
+    // 3. Déplacement de la Tour (Le Roque)
+    if (est_roque) {
+        if (y2 == 6) { // Petit roque
+            plateau[x2][5] = plateau[x2][7];
+            plateau[x2][7].type = VIDE; plateau[x2][7].couleur = AUCUNE;
+        } else if (y2 == 2) { // Grand roque
+            plateau[x2][3] = plateau[x2][0];
+            plateau[x2][0].type = VIDE; plateau[x2][0].couleur = AUCUNE;
+        }
+    }
+
+    // 4. Promotion auto
+    if (est_pion && ((plateau[x2][y2].couleur == BLANC && x2 == 0) || (plateau[x2][y2].couleur == NOIR && x2 == 7))) {
+        plateau[x2][y2].type = DAME;
+    }
+
+    // 5. Mise à jour Prise en Passant pour le prochain tour
+    if (est_pion && abs(x2 - x1) == 2) {
+        ep_x = (x1 + x2) / 2; ep_y = y1;
+    } else {
+        ep_x = -1; ep_y = -1;
+    }
+
+    // 6. Mise à jour des Droits de Roque
+    // Si le roi bouge
+    if (x1 == 7 && y1 == 4) { roque_K = 0; roque_Q = 0; } 
+    if (x1 == 0 && y1 == 4) { roque_k = 0; roque_q = 0; }
+    // Si une Tour bouge OU est capturée sur sa case de départ
+    if ((x1 == 7 && y1 == 7) || (x2 == 7 && y2 == 7)) roque_K = 0;
+    if ((x1 == 7 && y1 == 0) || (x2 == 7 && y2 == 0)) roque_Q = 0;
+    if ((x1 == 0 && y1 == 7) || (x2 == 0 && y2 == 7)) roque_k = 0;
+    if ((x1 == 0 && y1 == 0) || (x2 == 0 && y2 == 0)) roque_q = 0;
 }
 
 /* ==========================================================================
