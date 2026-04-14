@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Chess-AI & Labyrinthe A*</title>
+    <title>Chess-AI</title>
     
     <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
     
@@ -87,60 +87,6 @@
             background-color: #3c2415; 
         }
 
-        #mazeBoard {
-            display: none; /* Caché au début */
-            width: 480px;
-            height: 480px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.6);
-            border: 8px solid #3c2415;
-            border-radius: 4px;
-            background-color: #e4e2dd;
-            grid-template-columns: repeat(8, 1fr);
-            grid-template-rows: repeat(8, 1fr);
-        }
-
-        /* --- CELLULES DU LABYRINTHE --- */
-        .maze-cell {
-            border: 1px solid #c8c6c3;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        .maze-cell:hover { background-color: #d4d2ce; }
-
-        .maze-wall { 
-            background-color: #6b4c30; 
-            background-image: url('mur.png'); 
-            background-size: cover; 
-            cursor: not-allowed;
-        }
-        .maze-wall:hover { background-color: #6b4c30; }
-
-        .maze-player { 
-            background-color: #3498db; 
-            border-radius: 50%; 
-            width: 75%; 
-            height: 75%; 
-            box-shadow: inset -2px -2px 6px rgba(0,0,0,0.4), 2px 2px 4px rgba(0,0,0,0.3);
-        }
-        .maze-enemy { 
-            background-color: #e74c3c; 
-            border-radius: 50%; 
-            width: 85%; 
-            height: 85%; 
-            box-shadow: inset -2px -2px 6px rgba(0,0,0,0.5), 0 0 10px rgba(231,76,60,0.8);
-        }
-        .maze-exit { 
-            background-color: #27ae60; 
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.6);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 2.2em;
-        }
-        .maze-exit::after { content: '❌'; }
 
         /* --- PANNEAU DE CONTRÔLE --- */
         .controls-card {
@@ -154,14 +100,6 @@
             box-sizing: border-box;
         }
 
-        #timer-box {
-            font-size: 1.5em;
-            color: #e74c3c;
-            font-weight: bold;
-            display: none;
-            margin-bottom: 15px;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-        }
 
         #status-box {
             font-size: 1.2em;
@@ -208,18 +146,18 @@
         </div>
         
         <div id="myBoard"></div>
-        <div id="mazeBoard"></div>
+
     </div>
 
     <div class="controls-card">
-        <div id="timer-box">⏱️ Temps : 10s</div>
+
         <div id="status-box">Chargement du moteur WASM...</div>
         
         <div class="settings-row">
             <select id="mode-jeu" onchange="resetGame()">
                 <option value="IA">♟️ Échecs : Joueur vs IA</option>
                 <option value="PVP">♟️ Échecs : Joueur vs Joueur</option>
-                <option value="LABY">🧱 Survie : Labyrinthe A*</option>
+
             </select>
             <button onclick="resetGame()">Nouvelle Partie</button>
         </div>
@@ -230,9 +168,6 @@
     <script>
         var board = null;
         var engine = null;
-        let timerInterval = null;
-        let tempsRestant = 10;
-
         // --- PARTIE 1 : INITIALISATION ET GESTION DES MODES ---
 
         Echecs().then(instance => {
@@ -261,28 +196,14 @@
         function resetGame() {
             let mode = document.getElementById('mode-jeu').value;
             
-            if (mode === "LABY") {
-                document.getElementById('myBoard').style.display = 'none';
-                document.getElementById('eval-bar').style.display = 'none';
-                document.getElementById('mazeBoard').style.display = 'grid';
-                document.getElementById('mazeBoard').style.pointerEvents = 'auto';
-                
-                engine._init_labyrinthe();
-                dessinerLabyrinthe();
-                startTimer();
-                updateStatus("Mode Survie : Fuyez vers la sortie !");
-            } else {
-                document.getElementById('mazeBoard').style.display = 'none';
-                document.getElementById('myBoard').style.display = 'block';
-                document.getElementById('eval-bar').style.display = 'block';
-                
-                engine._initialiser_partie_web();
-                rafraichirDepuisFEN();
-                if (board) board.draggable = true;
-                mettreAJourBarreEval();
-                stopTimer();
-                updateStatus("Nouvelle partie ! À vous de jouer (Blancs)");
-            }
+            document.getElementById('myBoard').style.display = 'block';
+            document.getElementById('eval-bar').style.display = 'block';
+            
+            engine._initialiser_partie_web();
+            rafraichirDepuisFEN();
+            if (board) board.draggable = true;
+            mettreAJourBarreEval();
+            updateStatus("Nouvelle partie ! À vous de jouer (Blancs)");
         }
 
         // --- PARTIE 2 : LOGIQUE DES ÉCHECS ---
@@ -338,98 +259,7 @@
             board.position(fen, true); 
         }
 
-        // --- PARTIE 3 : LOGIQUE DU LABYRINTHE A* ET TIMER ---
 
-        function startTimer() {
-            clearInterval(timerInterval);
-            tempsRestant = 10;
-            let timerEl = document.getElementById('timer-box');
-            timerEl.innerText = "⏱️ Temps : " + tempsRestant + "s";
-            timerEl.style.display = 'block';
-            
-            timerInterval = setInterval(() => {
-                tempsRestant--;
-                timerEl.innerText = "⏱️ Temps : " + tempsRestant + "s";
-                
-                if (tempsRestant <= 0) {
-                    clearInterval(timerInterval);
-                    updateStatus("⌛ TEMPS ÉCOULÉ ! VOUS ÊTES MORT !", true);
-                    document.getElementById('mazeBoard').style.pointerEvents = 'none';
-                }
-            }, 1000);
-        }
-
-        function stopTimer() {
-            clearInterval(timerInterval);
-            document.getElementById('timer-box').style.display = 'none';
-        }
-
-        function dessinerLabyrinthe() {
-            const mazeDiv = document.getElementById('mazeBoard');
-            mazeDiv.innerHTML = ''; 
-
-            for (let x = 0; x < 8; x++) {
-                for (let y = 0; y < 8; y++) {
-                    let valeur = engine._lire_case_laby(x, y);
-                    let cell = document.createElement('div');
-                    cell.className = 'maze-cell';
-                    
-                    if (valeur === 1) cell.classList.add('maze-wall');
-                    else if (valeur === 2) {
-                        let player = document.createElement('div');
-                        player.className = 'maze-player';
-                        cell.appendChild(player);
-                    }
-                    else if (valeur === 3) {
-                        let enemy = document.createElement('div');
-                        enemy.className = 'maze-enemy';
-                        cell.appendChild(enemy);
-                    }
-                    else if (valeur === 4) {
-                        cell.classList.add('maze-exit'); 
-                    }
-
-                    cell.onclick = () => {
-                        let resultat = engine._deplacer_joueur_laby(x, y);
-                        
-                        if (resultat !== 0) { 
-                            dessinerLabyrinthe();
-                            
-                            if (resultat === 3) {
-                                clearInterval(timerInterval);
-                                updateStatus("🏆 SORTIE ATTEINTE ! BIEN JOUÉ !", true);
-                                document.getElementById('status-box').style.color = "#27ae60"; // Vert pour la victoire
-                                document.getElementById('mazeBoard').style.pointerEvents = 'none';
-                                return;
-                            }
-                            if (resultat === -1) {
-                                clearInterval(timerInterval);
-                                updateStatus("💀 VOUS AVEZ FONCÉ SUR LE MONSTRE !", true);
-                                document.getElementById('mazeBoard').style.pointerEvents = 'none';
-                                return;
-                            }
-                            
-                            updateStatus("💀 Le traqueur A* approche...");
-                            document.getElementById('mazeBoard').style.pointerEvents = 'none'; 
-                            
-                            setTimeout(() => {
-                                let ia_resultat = engine._jouer_ia_laby();
-                                dessinerLabyrinthe();
-                                
-                                if (ia_resultat === 1) {
-                                    clearInterval(timerInterval);
-                                    updateStatus("💀 RATTRAPÉ ! VOUS ÊTES MORT !", true);
-                                } else {
-                                    updateStatus("À vous de fuir !");
-                                    document.getElementById('mazeBoard').style.pointerEvents = 'auto'; 
-                                }
-                            }, 250); // Le monstre bouge vite !
-                        }
-                    };
-                    mazeDiv.appendChild(cell);
-                }
-            }
-        }
     </script>
 </body>
 </html>
