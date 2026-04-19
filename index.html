@@ -19,31 +19,39 @@
             flex-direction: column;
             align-items: center;
             margin: 0;
-            padding: 30px;
-            min-height: 100vh;
+            padding: 15px;
+            width: 100%;
+            height: 100dvh;
+            box-sizing: border-box;
+            overflow: hidden;
+            touch-action: none;
         }
 
         h1 {
-            margin-bottom: 5px;
+            margin-bottom: 5px; margin-top: 0;
             color: #e8c396;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-            font-size: 2.5em;
+            font-size: clamp(1.5em, 5vw, 2.5em);
             letter-spacing: 2px;
         }
 
         h3 {
             margin-top: 0;
-            margin-bottom: 30px;
+            margin-bottom: 15px;
             color: #a8845b;
             font-style: italic;
+            font-size: clamp(0.9em, 4vw, 1.2em);
         }
 
         /* --- CONTENEUR PRINCIPAL --- */
         .game-layout {
             display: flex;
-            gap: 25px;
+            gap: 15px;
             align-items: stretch;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
+            width: 100%;
+            max-width: 480px;
+            justify-content: center;
         }
 
         /* --- BARRE D'ÉVALUATION (ÉCHECS) --- */
@@ -80,9 +88,10 @@
 
         /* --- LES DEUX PLATEAUX --- */
         #myBoard {
-            width: 480px;
+            width: 100%;
+            flex: 1;
             box-shadow: 0 15px 35px rgba(0,0,0,0.6);
-            border: 8px solid #3c2415;
+            border: 5px solid #3c2415;
             border-radius: 4px;
             background-color: #3c2415; 
         }
@@ -91,13 +100,15 @@
         /* --- PANNEAU DE CONTRÔLE --- */
         .controls-card {
             background: linear-gradient(145deg, #2c1a0e, #1a0f08);
-            padding: 25px;
+            padding: 15px;
             border-radius: 12px;
             box-shadow: 0 8px 25px rgba(0,0,0,0.7);
             border: 1px solid #5c3c21;
-            width: 480px;
+            width: 100%;
+            max-width: 480px;
             text-align: center;
             box-sizing: border-box;
+            margin-bottom: 5px;
         }
 
 
@@ -258,6 +269,49 @@
             let fen = engine.ccall('renvoyer_FEN', 'string', ['number'], [engine._partie_globale]);
             board.position(fen, true); 
         }
+
+        // --- PARTIE 3 : CLICK TO MOVE ---
+        let selectedSquare = null;
+
+        $(document).on('click', '.square-55d63', function() {
+            if (!board || board.draggable === false) return;
+
+            let targetSquare = $(this).attr('data-square');
+            
+            if (selectedSquare) {
+                if (selectedSquare === targetSquare) {
+                    $('.square-55d63').css('box-shadow', '');
+                    selectedSquare = null;
+                    return;
+                }
+
+                let y1 = selectedSquare.charCodeAt(0) - 97;
+                let x1 = 8 - parseInt(selectedSquare[1]);
+                let y2 = targetSquare.charCodeAt(0) - 97;
+                let x2 = 8 - parseInt(targetSquare[1]);
+
+                let valide = engine._valider_coup_humain(x1, y1, x2, y2);
+                
+                $('.square-55d63').css('box-shadow', '');
+                
+                if (valide !== 0) {
+                    board.move(selectedSquare + '-' + targetSquare);
+                    onSnapEnd();
+                }
+                
+                selectedSquare = null;
+            } else {
+                let pieceElt = $(this).find('.piece-417db');
+                if (pieceElt.length > 0) {
+                    selectedSquare = targetSquare;
+                    $(this).css('box-shadow', 'inset 0 0 0 4px rgba(200, 200, 50, 0.8)');
+                }
+            }
+        });
+
+        $(window).resize(function() {
+            if (board) board.resize();
+        });
 
 
     </script>
